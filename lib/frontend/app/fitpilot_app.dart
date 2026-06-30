@@ -59,11 +59,7 @@ class _AuthGate extends StatelessWidget {
     } else if (user == null) {
       screen = const LoginPage();
     } else {
-      screen = switch (user.role) {
-        UserRole.personalTrainer => FitnessHomePage(onLogout: state.logout),
-        // Super Admin and (future) Branch Manager use the admin console.
-        _ => const AdminDashboardPage(),
-      };
+      screen = const AdminDashboardPage();
     }
 
     return AnimatedSwitcher(

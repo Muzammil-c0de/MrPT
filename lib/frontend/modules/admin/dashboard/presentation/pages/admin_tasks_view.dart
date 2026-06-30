@@ -1,24 +1,14 @@
 part of 'admin_dashboard_page.dart';
 
-/// Tasks tab: create/assign tasks, filter by status, and approve photos.
-class _AdminTasksView extends StatefulWidget {
+/// Tasks tab: create tasks, assign them to members, and approve photos.
+class _AdminTasksView extends StatelessWidget {
   const _AdminTasksView({required this.state});
 
   final AppState state;
 
   @override
-  State<_AdminTasksView> createState() => _AdminTasksViewState();
-}
-
-class _AdminTasksViewState extends State<_AdminTasksView> {
-  GymTaskStatus? _filter; // null == all
-
-  @override
   Widget build(BuildContext context) {
-    final state = widget.state;
-    final tasks = _filter == null
-        ? state.tasks
-        : state.tasksByStatus(_filter!);
+    final tasks = state.tasks;
 
     return Column(
       children: [
@@ -53,44 +43,15 @@ class _AdminTasksViewState extends State<_AdminTasksView> {
                   );
                 },
               ),
-              const SizedBox(height: 14),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _FilterChip(
-                    label: 'All (${state.tasks.length})',
-                    selected: _filter == null,
-                    onTap: () => setState(() => _filter = null),
-                  ),
-                  _FilterChip(
-                    label: 'Pending (${state.pendingTasks})',
-                    selected: _filter == GymTaskStatus.pending,
-                    onTap: () => setState(() => _filter = GymTaskStatus.pending),
-                  ),
-                  _FilterChip(
-                    label: 'In progress (${state.inProgressTasks})',
-                    selected: _filter == GymTaskStatus.inProgress,
-                    onTap: () =>
-                        setState(() => _filter = GymTaskStatus.inProgress),
-                  ),
-                  _FilterChip(
-                    label: 'Completed (${state.completedTasks})',
-                    selected: _filter == GymTaskStatus.completed,
-                    onTap: () =>
-                        setState(() => _filter = GymTaskStatus.completed),
-                  ),
-                ],
-              ),
               const SizedBox(height: 16),
               if (tasks.isEmpty)
                 const AppEmptyState(
                   icon: Icons.assignment_outlined,
-                  message: 'No tasks in this view. Create one to get started.',
+                  message: 'No tasks yet. Create one to get started.',
                 )
               else
                 for (var i = 0; i < tasks.length; i++) ...[
-                  _TaskCard(task: tasks[i], state: state),
+                  _TaskCard(task: tasks[i]),
                   if (i != tasks.length - 1) const SizedBox(height: 12),
                 ],
             ],
@@ -103,46 +64,10 @@ class _AdminTasksViewState extends State<_AdminTasksView> {
   }
 }
 
-class _FilterChip extends StatelessWidget {
-  const _FilterChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.yellow : AppColors.charcoal,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: selected ? AppColors.yellow : AppColors.line),
-        ),
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: selected ? AppColors.charcoal : AppColors.muted,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _TaskCard extends StatelessWidget {
-  const _TaskCard({required this.task, required this.state});
+  const _TaskCard({required this.task});
 
   final GymTask task;
-  final AppState state;
 
   @override
   Widget build(BuildContext context) {
@@ -159,7 +84,7 @@ class _TaskCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              AppIconBadge(icon: task.status.icon),
+              const AppIconBadge(icon: Icons.assignment_outlined),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -175,7 +100,7 @@ class _TaskCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Assigned to: ${state.trainerName(task.trainerId)}',
+                      'Assigned to: ${task.memberName}',
                       style: Theme.of(
                         context,
                       ).textTheme.bodySmall?.copyWith(
@@ -186,73 +111,9 @@ class _TaskCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
-              AppSmallChip(
-                label: task.status.label,
-                color: AppColors.surfaceAlt,
-                textColor: AppColors.yellow,
-              ),
             ],
           ),
-          if (task.videoUrl != null) ...[
-            const SizedBox(height: 12),
-            Container(
-              height: 180,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(kAppRadius),
-                border: Border.all(color: AppColors.line),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(kAppRadius - 1),
-                child: video_player.createVideoPlayer(task.videoUrl!),
-              ),
-            ),
-          ],
-          const SizedBox(height: 12),
-          _StatusMenuButton(task: task, state: state),
         ],
-      ),
-    );
-  }
-}
-
-class _StatusMenuButton extends StatelessWidget {
-  const _StatusMenuButton({required this.task, required this.state});
-
-  final GymTask task;
-  final AppState state;
-
-  @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<GymTaskStatus>(
-      tooltip: 'Change status',
-      color: AppColors.surface,
-      onSelected: (status) => state.setTaskStatus(task.id, status),
-      itemBuilder: (context) => [
-        for (final status in GymTaskStatus.values)
-          PopupMenuItem(value: status, child: Text(status.label)),
-      ],
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(kAppRadius),
-          border: Border.all(color: AppColors.line),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.flag_outlined, size: 18, color: AppColors.ink),
-            const SizedBox(width: 8),
-            Text(
-              'Set status',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: AppColors.ink,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const Icon(Icons.arrow_drop_down, color: AppColors.muted),
-          ],
-        ),
       ),
     );
   }
@@ -354,47 +215,45 @@ class _ApprovalRow extends StatelessWidget {
 
 Future<void> _showCreateTaskDialog(
   BuildContext context,
-  AppState state, {
-  String? trainerId,
-}) async {
-  if (state.trainers.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Add a trainer before creating tasks.')),
-    );
-    return;
-  }
+  AppState state,
+) async {
   final task = await showDialog<GymTask>(
     context: context,
-    builder: (_) => _CreateTaskDialog(state: state, initialTrainerId: trainerId),
+    builder: (_) => _CreateTaskDialog(state: state),
   );
   if (task != null && context.mounted) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Task ${task.id} assigned to ${state.trainerName(task.trainerId)}.')),
+      SnackBar(content: Text('Task ${task.id} assigned to ${task.memberName}.')),
     );
   }
 }
 
 class _CreateTaskDialog extends StatefulWidget {
-  const _CreateTaskDialog({required this.state, this.initialTrainerId});
+  const _CreateTaskDialog({required this.state});
 
   final AppState state;
-  final String? initialTrainerId;
 
   @override
   State<_CreateTaskDialog> createState() => _CreateTaskDialogState();
 }
 
 class _CreateTaskDialogState extends State<_CreateTaskDialog> {
-
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
+  final _memberController = TextEditingController();
 
-  late String _trainerId =
-      widget.initialTrainerId ?? widget.state.trainers.first.id;
+  @override
+  void initState() {
+    super.initState();
+    if (widget.state.members.isNotEmpty) {
+      _memberController.text = widget.state.members.first.name;
+    }
+  }
 
   @override
   void dispose() {
     _titleController.dispose();
+    _memberController.dispose();
     super.dispose();
   }
 
@@ -402,8 +261,7 @@ class _CreateTaskDialogState extends State<_CreateTaskDialog> {
     if (!_formKey.currentState!.validate()) return;
     final task = widget.state.addTask(
       title: _titleController.text,
-      trainerId: _trainerId,
-      memberName: 'N/A',
+      memberName: _memberController.text,
       priority: 'Medium',
       dueDate: 'No due date',
       instructions: '',
@@ -454,21 +312,16 @@ class _CreateTaskDialogState extends State<_CreateTaskDialog> {
                       : null,
                 ),
                 const SizedBox(height: 14),
-                DropdownButtonFormField<String>(
-                  initialValue: _trainerId,
+                TextFormField(
+                  controller: _memberController,
                   decoration: const InputDecoration(
-                    labelText: 'Assign to trainer',
-                    prefixIcon: Icon(Icons.fitness_center_outlined),
+                    labelText: 'Assign to member',
+                    prefixIcon: Icon(Icons.person_outline),
                   ),
-                  dropdownColor: AppColors.surface,
-                  items: [
-                    for (final trainer in widget.state.trainers)
-                      DropdownMenuItem(
-                        value: trainer.id,
-                        child: Text(trainer.name),
-                      ),
-                  ],
-                  onChanged: (value) => setState(() => _trainerId = value!),
+                  validator: (value) =>
+                      (value == null || value.trim().isEmpty)
+                      ? 'Enter a member name.'
+                      : null,
                 ),
               ],
             ),

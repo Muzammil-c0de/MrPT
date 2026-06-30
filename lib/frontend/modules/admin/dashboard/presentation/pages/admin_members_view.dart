@@ -1,6 +1,6 @@
 part of 'admin_dashboard_page.dart';
 
-/// Members tab: search, directory, add/renew, trainer assignment, and plans.
+/// Members tab: search, directory, add/renew, and plans.
 class _AdminMembersView extends StatefulWidget {
   const _AdminMembersView({required this.state});
 
@@ -244,34 +244,19 @@ class _MemberCard extends StatelessWidget {
                       ? '${member.oldWeight} kg → ${member.currentWeight} kg (${(member.currentWeight! - member.oldWeight!) > 0 ? "+" : ""}${(member.currentWeight! - member.oldWeight!).toStringAsFixed(1)} kg)'
                       : 'Not recorded',
                 ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 4),
-                  child: Divider(color: AppColors.line, height: 1),
-                ),
-                _DetailRow(
-                  icon: Icons.badge_outlined,
-                  label: 'Trainer',
-                  value: state.trainerName(member.assignedTrainerId),
-                ),
               ],
             ),
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              OutlinedButton.icon(
-                onPressed: () {
-                  state.renewMember(member.id);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('${member.name} membership renewed.')),
-                  );
-                },
-                icon: const Icon(Icons.autorenew, size: 18),
-                label: const Text('Renew'),
-              ),
-              const SizedBox(width: 10),
-              _AssignTrainerButton(member: member, state: state),
-            ],
+          OutlinedButton.icon(
+            onPressed: () {
+              state.renewMember(member.id);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('${member.name} membership renewed.')),
+              );
+            },
+            icon: const Icon(Icons.autorenew, size: 18),
+            label: const Text('Renew'),
           ),
         ],
       ),
@@ -316,50 +301,6 @@ class _DetailRow extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _AssignTrainerButton extends StatelessWidget {
-  const _AssignTrainerButton({required this.member, required this.state});
-
-  final Member member;
-  final AppState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final trainers = state.trainers;
-    return PopupMenuButton<String?>(
-      tooltip: 'Assign trainer',
-      color: AppColors.surface,
-      onSelected: (value) => state.assignTrainerToMember(member.id, value),
-      itemBuilder: (context) => [
-        const PopupMenuItem<String?>(value: null, child: Text('Unassigned')),
-        for (final trainer in trainers)
-          PopupMenuItem<String?>(value: trainer.id, child: Text(trainer.name)),
-      ],
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(kAppRadius),
-          border: Border.all(color: AppColors.line),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.manage_accounts_outlined, size: 18, color: AppColors.ink),
-            const SizedBox(width: 8),
-            Text(
-              'Assign trainer',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: AppColors.ink,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const Icon(Icons.arrow_drop_down, color: AppColors.muted),
-          ],
-        ),
       ),
     );
   }
@@ -454,7 +395,6 @@ class _AddMemberDialogState extends State<_AddMemberDialog> {
   final _currentWeightController = TextEditingController();
 
   late String _planId = widget.state.plans.first.id;
-  String? _trainerId;
 
   @override
   void dispose() {
@@ -476,7 +416,6 @@ class _AddMemberDialogState extends State<_AddMemberDialog> {
       name: _nameController.text,
       phone: _phoneController.text,
       planId: _planId,
-      assignedTrainerId: _trainerId,
       imageUrl: _imageUrlController.text.trim().isEmpty ? null : _imageUrlController.text.trim(),
       lastWorkout: _lastWorkoutController.text.trim().isEmpty ? null : _lastWorkoutController.text.trim(),
       oldWeight: oldWeight,
@@ -487,8 +426,6 @@ class _AddMemberDialogState extends State<_AddMemberDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final trainers = widget.state.trainers;
-
     return AlertDialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(
@@ -560,27 +497,6 @@ class _AddMemberDialogState extends State<_AddMemberDialog> {
                       ),
                   ],
                   onChanged: (value) => setState(() => _planId = value!),
-                ),
-                const SizedBox(height: 14),
-                DropdownButtonFormField<String?>(
-                  initialValue: _trainerId,
-                  decoration: const InputDecoration(
-                    labelText: 'Assign trainer (optional)',
-                    prefixIcon: Icon(Icons.fitness_center_outlined),
-                  ),
-                  dropdownColor: AppColors.surface,
-                  items: [
-                    const DropdownMenuItem<String?>(
-                      value: null,
-                      child: Text('Unassigned'),
-                    ),
-                    for (final trainer in trainers)
-                      DropdownMenuItem<String?>(
-                        value: trainer.id,
-                        child: Text(trainer.name),
-                      ),
-                  ],
-                  onChanged: (value) => setState(() => _trainerId = value),
                 ),
                 const SizedBox(height: 14),
                 TextFormField(

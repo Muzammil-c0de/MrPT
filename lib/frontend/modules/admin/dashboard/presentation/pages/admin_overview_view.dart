@@ -20,16 +20,10 @@ class _AdminOverviewView extends StatelessWidget {
               color: AppColors.success,
             ),
             _AdminMetricTile(
-              icon: Icons.fitness_center_outlined,
-              label: 'Active trainers',
-              value: '${state.activeTrainers}',
+              icon: Icons.assignment_outlined,
+              label: 'Total tasks',
+              value: '${state.tasks.length}',
               color: AppColors.amber,
-            ),
-            _AdminMetricTile(
-              icon: Icons.pending_actions_outlined,
-              label: 'Pending tasks',
-              value: '${state.pendingTasks}',
-              color: AppColors.gold,
             ),
           ],
         ),
@@ -101,11 +95,6 @@ class _TodaySummaryPanel extends StatelessWidget {
               ),
               OutlinedButton.icon(
                 onPressed: () => onNavigate(2),
-                icon: const Icon(Icons.fitness_center),
-                label: const Text('Trainers'),
-              ),
-              OutlinedButton.icon(
-                onPressed: () => onNavigate(3),
                 icon: const Icon(Icons.add_task),
                 label: const Text('Tasks'),
               ),
@@ -125,7 +114,6 @@ class _QuickStatsPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final totalMembers = state.totalMembers;
-    final totalTasks = state.tasks.length;
 
     double ratio(int part, int whole) => whole == 0 ? 0 : part / whole;
 
@@ -142,15 +130,9 @@ class _QuickStatsPanel extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           _StatMeter(
-            label: 'Tasks completed',
-            detail: '${state.completedTasks} of $totalTasks',
-            value: ratio(state.completedTasks, totalTasks),
-          ),
-          const SizedBox(height: 14),
-          _StatMeter(
-            label: 'Tasks in progress',
-            detail: '${state.inProgressTasks} of $totalTasks',
-            value: ratio(state.inProgressTasks, totalTasks),
+            label: 'Expired memberships',
+            detail: '${state.expiredMembers} of $totalMembers',
+            value: ratio(state.expiredMembers, totalMembers),
           ),
         ],
       ),

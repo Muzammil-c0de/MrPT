@@ -1,16 +1,11 @@
 /// Roles supported by the FitPilot platform.
-///
-/// [branchManager] is wired into the model now so the permission system is
-/// future-ready, even though only [superAdmin] and [personalTrainer] are
-/// provisioned today.
-enum UserRole { superAdmin, branchManager, personalTrainer }
+enum UserRole { superAdmin, branchManager }
 
 extension UserRoleDetails on UserRole {
   String get label {
     return switch (this) {
       UserRole.superAdmin => 'Super Admin',
       UserRole.branchManager => 'Branch Manager',
-      UserRole.personalTrainer => 'Personal Trainer',
     };
   }
 
@@ -19,7 +14,6 @@ extension UserRoleDetails on UserRole {
     return switch (this) {
       UserRole.superAdmin => 'ADM',
       UserRole.branchManager => 'MGR',
-      UserRole.personalTrainer => 'PT',
     };
   }
 }

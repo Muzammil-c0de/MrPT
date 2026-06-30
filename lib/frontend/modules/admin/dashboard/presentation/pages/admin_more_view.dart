@@ -202,8 +202,9 @@ class _ReportsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    final totalTasks = state.tasks.length;
-    final completion = totalTasks == 0 ? 0.0 : state.completedTasks / totalTasks;
+    final totalMembers = state.totalMembers;
+    final activeRatio = totalMembers == 0 ? 0.0 : state.activeMembers / totalMembers;
+    final expiredRatio = totalMembers == 0 ? 0.0 : state.expiredMembers / totalMembers;
 
     return _SubPageScaffold(
       title: 'Reports',
@@ -225,14 +226,14 @@ class _ReportsPage extends StatelessWidget {
               ),
               _AdminMetricTile(
                 icon: Icons.people_alt_outlined,
-                label: 'Members',
-                value: '${state.totalMembers}',
+                label: 'Total members',
+                value: '$totalMembers',
                 color: AppColors.amber,
               ),
               _AdminMetricTile(
-                icon: Icons.task_alt,
-                label: 'Task completion',
-                value: '${(completion * 100).round()}%',
+                icon: Icons.check_circle_outline,
+                label: 'Active members',
+                value: '${state.activeMembers}',
                 color: AppColors.gold,
               ),
             ],
@@ -242,30 +243,22 @@ class _ReportsPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const AppPanelHeader(title: 'Task completion report'),
+                const AppPanelHeader(title: 'Membership health report'),
                 const SizedBox(height: 16),
                 _StatMeter(
-                  label: 'Completed',
-                  detail: '${state.completedTasks} of $totalTasks',
-                  value: completion,
+                  label: 'Active memberships',
+                  detail: '${state.activeMembers} of $totalMembers',
+                  value: activeRatio,
                 ),
                 const SizedBox(height: 14),
                 _StatMeter(
-                  label: 'In progress',
-                  detail: '${state.inProgressTasks} of $totalTasks',
-                  value: totalTasks == 0 ? 0 : state.inProgressTasks / totalTasks,
-                ),
-                const SizedBox(height: 14),
-                _StatMeter(
-                  label: 'Pending',
-                  detail: '${state.pendingTasks} of $totalTasks',
-                  value: totalTasks == 0 ? 0 : state.pendingTasks / totalTasks,
+                  label: 'Expired memberships',
+                  detail: '${state.expiredMembers} of $totalMembers',
+                  value: expiredRatio,
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          _TrainerPerformancePanel(state: state),
         ],
       ),
     );
@@ -308,10 +301,8 @@ class _AttendancePage extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 11),
                   child: Row(
                     children: [
-                      AppIconBadge(
-                        icon: records[i].role == 'Trainer'
-                            ? Icons.fitness_center
-                            : Icons.person_outline,
+                      const AppIconBadge(
+                        icon: Icons.person_outline,
                         size: 40,
                       ),
                       const SizedBox(width: 12),

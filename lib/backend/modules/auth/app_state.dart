@@ -111,71 +111,13 @@ class AppState extends ChangeNotifier {
   }
 
   // ---------------------------------------------------------------------------
-  // Trainers
+  // Account ids
   // ---------------------------------------------------------------------------
-
-  List<AppUser> get trainers {
-    final list = _users
-        .where((user) => user.role == UserRole.personalTrainer)
-        .toList();
-    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    return List.unmodifiable(list);
-  }
-
-  int get totalTrainers => trainers.length;
-  int get activeTrainers => trainers.where((t) => t.active).length;
-  int get disabledTrainers => totalTrainers - activeTrainers;
-
-  String trainerName(String? id) {
-    if (id == null) return 'Unassigned';
-    return _findUser(id)?.name ?? 'Unassigned';
-  }
 
   String _nextId(UserRole role) {
     final next = (_idCounters[role] ?? 0) + 1;
     _idCounters[role] = next;
     return '${role.idPrefix}-${next.toString().padLeft(4, '0')}';
-  }
-
-  String get nextTrainerIdPreview {
-    final next = (_idCounters[UserRole.personalTrainer] ?? 0) + 1;
-    return '${UserRole.personalTrainer.idPrefix}-${next.toString().padLeft(4, '0')}';
-  }
-
-  AppUser addTrainer({
-    required String name,
-    required String password,
-    String? email,
-  }) {
-    final trainer = AppUser(
-      id: _nextId(UserRole.personalTrainer),
-      name: name.trim(),
-      role: UserRole.personalTrainer,
-      email: email?.trim().isEmpty ?? true ? null : email!.trim(),
-      password: password,
-    );
-    _users.add(trainer);
-    notifyListeners();
-    return trainer;
-  }
-
-  void setTrainerActive(String id, bool active) {
-    final user = _findUser(id);
-    if (user == null) return;
-    user.active = active;
-    notifyListeners();
-  }
-
-  /// Number of active members assigned to a trainer.
-  int membersOfTrainer(String trainerId) =>
-      _members.where((m) => m.assignedTrainerId == trainerId).length;
-
-  /// Completed-task ratio for a trainer (0..1).
-  double trainerPerformance(String trainerId) {
-    final theirs = _tasks.where((t) => t.trainerId == trainerId).toList();
-    if (theirs.isEmpty) return 0;
-    final done = theirs.where((t) => t.status == GymTaskStatus.completed).length;
-    return done / theirs.length;
   }
 
   // ---------------------------------------------------------------------------
@@ -210,7 +152,6 @@ class AppState extends ChangeNotifier {
     required String name,
     required String phone,
     required String planId,
-    String? assignedTrainerId,
     String? imageUrl,
     String? lastWorkout,
     double? oldWeight,
@@ -226,7 +167,6 @@ class AppState extends ChangeNotifier {
       planId: planId,
       joinDate: now,
       expiryDate: DateTime(now.year, now.month + plan.durationMonths, now.day),
-      assignedTrainerId: assignedTrainerId,
       imageUrl: imageUrl,
       lastWorkout: lastWorkout,
       oldWeight: oldWeight,
@@ -250,34 +190,20 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void assignTrainerToMember(String memberId, String? trainerId) {
-    final member = _members.firstWhere((m) => m.id == memberId);
-    member.assignedTrainerId = trainerId;
-    notifyListeners();
-  }
-
   // ---------------------------------------------------------------------------
   // Tasks
   // ---------------------------------------------------------------------------
 
   List<GymTask> get tasks => List.unmodifiable(_tasks);
 
-  List<GymTask> tasksByStatus(GymTaskStatus status) =>
-      _tasks.where((t) => t.status == status).toList();
-
   List<GymTask> get photoApprovals =>
       _tasks.where((t) => t.photoSubmitted && !t.photoApproved).toList();
-
-  int get pendingTasks => tasksByStatus(GymTaskStatus.pending).length;
-  int get inProgressTasks => tasksByStatus(GymTaskStatus.inProgress).length;
-  int get completedTasks => tasksByStatus(GymTaskStatus.completed).length;
 
   String get nextTaskIdPreview =>
       'TSK-${(_taskCounter + 1).toString().padLeft(4, '0')}';
 
   GymTask addTask({
     required String title,
-    required String trainerId,
     required String memberName,
     required String priority,
     required String dueDate,
@@ -287,7 +213,6 @@ class AppState extends ChangeNotifier {
     final task = GymTask(
       id: 'TSK-${_taskCounter.toString().padLeft(4, '0')}',
       title: title.trim(),
-      trainerId: trainerId,
       memberName: memberName.trim(),
       priority: priority,
       dueDate: dueDate.trim(),
@@ -296,11 +221,6 @@ class AppState extends ChangeNotifier {
     _tasks.add(task);
     notifyListeners();
     return task;
-  }
-
-  void setTaskStatus(String taskId, GymTaskStatus status) {
-    _tasks.firstWhere((t) => t.id == taskId).status = status;
-    notifyListeners();
   }
 
   void approveTaskPhoto(String taskId, bool approved) {
@@ -364,19 +284,6 @@ class AppState extends ChangeNotifier {
     _users.add(admin);
 
     final now = DateTime.now();
-    AppUser seedTrainer(String name) => AppUser(
-      id: _nextId(UserRole.personalTrainer),
-      name: name,
-      role: UserRole.personalTrainer,
-      email: '${name.split(' ').first.toLowerCase()}@mrpt.com',
-      password: 'trainer123',
-      createdAt: now.subtract(const Duration(days: 6)),
-    );
-    final maya = seedTrainer('Maya Johnson');
-    final carlos = seedTrainer('Carlos Reyes');
-    final nina = seedTrainer('Nina Park');
-    _users.addAll([maya, carlos, nina]);
-
     _plans.addAll(const [
       MembershipPlan(id: 'PLN-1', name: 'Basic Monthly', price: 35, durationMonths: 1),
       MembershipPlan(id: 'PLN-2', name: 'Quarterly', price: 90, durationMonths: 3),
@@ -388,7 +295,6 @@ class AppState extends ChangeNotifier {
       required String phone,
       required String planId,
       required int joinedDaysAgo,
-      String? trainerId,
       String? imageUrl,
       String? lastWorkout,
       double? oldWeight,
@@ -404,7 +310,6 @@ class AppState extends ChangeNotifier {
         planId: planId,
         joinDate: join,
         expiryDate: DateTime(join.year, join.month + plan.durationMonths, join.day),
-        assignedTrainerId: trainerId,
         imageUrl: imageUrl,
         lastWorkout: lastWorkout,
         oldWeight: oldWeight,
@@ -429,7 +334,6 @@ class AppState extends ChangeNotifier {
       phone: '+1 555-0147',
       planId: 'PLN-3',
       joinedDaysAgo: 12,
-      trainerId: maya.id,
       imageUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
       lastWorkout: 'Squat Technique & Glute activation (Yesterday)',
       oldWeight: 68.5,
@@ -440,7 +344,6 @@ class AppState extends ChangeNotifier {
       phone: '+1 555-0192',
       planId: 'PLN-2',
       joinedDaysAgo: 8,
-      trainerId: carlos.id,
       imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
       lastWorkout: 'High-intensity interval conditioning (2 days ago)',
       oldWeight: 85.0,
@@ -451,7 +354,6 @@ class AppState extends ChangeNotifier {
       phone: '+1 555-0163',
       planId: 'PLN-1',
       joinedDaysAgo: 4,
-      trainerId: maya.id,
       imageUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150',
       lastWorkout: 'Active mobility & Hip mobility drill (Today)',
       oldWeight: 58.2,
@@ -462,7 +364,6 @@ class AppState extends ChangeNotifier {
       phone: '+1 555-0118',
       planId: 'PLN-1',
       joinedDaysAgo: 70,
-      trainerId: nina.id,
       imageUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
       lastWorkout: 'Deadlift heavy sets & core accessory (3 days ago)',
       oldWeight: 92.4,
@@ -483,64 +384,52 @@ class AppState extends ChangeNotifier {
       GymTask(
         id: 'TSK-0001',
         title: 'Review Barbell Bench Press form',
-        trainerId: maya.id,
         memberName: 'Ava Ramos',
         priority: 'High',
         dueDate: 'Today, 6:00 PM',
         instructions: 'Check chest contact point, elbow tuck angle, and bar path. Add two corrective cues for shoulder stability.',
-        status: GymTaskStatus.inProgress,
       ),
       GymTask(
         id: 'TSK-0002',
         title: 'Build Dumbbell Fly workout plan',
-        trainerId: carlos.id,
         memberName: 'Darius King',
         priority: 'Medium',
         dueDate: 'Tomorrow, 9:00 AM',
         instructions: 'Create a 4-set chest hypertrophy sequence. Focus on deep stretch and controlled concentric phase.',
-        status: GymTaskStatus.pending,
       ),
       GymTask(
         id: 'TSK-0003',
         title: 'Update Lever Seated Fly execution tips',
-        trainerId: maya.id,
         memberName: 'Mina Patel',
         priority: 'High',
         dueDate: 'Thu, 8:00 PM',
         instructions: 'Review seat height and handle alignment. Add remarks on avoiding excessive shoulder external rotation.',
-        status: GymTaskStatus.inProgress,
         photoSubmitted: true,
       ),
       GymTask(
         id: 'TSK-0004',
         title: 'Assess Lever Chest Press technique',
-        trainerId: nina.id,
         memberName: 'Theo Brooks',
         priority: 'Low',
         dueDate: 'Completed today',
         instructions: 'Check push path and scapular retraction against pad. Provide feedback on power output.',
-        status: GymTaskStatus.completed,
         photoSubmitted: true,
       ),
       GymTask(
         id: 'TSK-0005',
         title: 'Confirm Bench Press attendance variance',
-        trainerId: carlos.id,
         memberName: 'Lena Cole',
         priority: 'Medium',
         dueDate: 'Fri, 12:00 PM',
         instructions: 'Follow up on the skipped heavy chest day. Reschedule the Bench Press progression session.',
-        status: GymTaskStatus.pending,
       ),
     ]);
     _taskCounter = 5;
 
     _attendance.addAll(const [
       AttendanceRecord(id: 'A1', name: 'Ava Ramos', role: 'Member', time: '6:05 AM'),
-      AttendanceRecord(id: 'A2', name: 'Maya Johnson', role: 'Trainer', time: '5:50 AM'),
       AttendanceRecord(id: 'A3', name: 'Darius King', role: 'Member', time: '7:20 AM'),
       AttendanceRecord(id: 'A4', name: 'Mina Patel', role: 'Member', time: '8:10 AM'),
-      AttendanceRecord(id: 'A5', name: 'Carlos Reyes', role: 'Trainer', time: '8:00 AM'),
     ]);
 
     _notifications.addAll(const [
@@ -561,12 +450,6 @@ class AppState extends ChangeNotifier {
         detail: 'Theo Brooks membership needs renewal.',
         time: 'Today',
         icon: Icons.warning_amber_outlined,
-      ),
-      GymNotification(
-        title: 'Task completed',
-        detail: 'Nina Park completed nutrition remarks.',
-        time: 'Today',
-        icon: Icons.task_alt,
       ),
     ]);
   }

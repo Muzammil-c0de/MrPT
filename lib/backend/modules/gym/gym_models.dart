@@ -17,23 +17,6 @@ extension MemberStatusDetails on MemberStatus {
   };
 }
 
-/// Workflow state of a trainer task.
-enum GymTaskStatus { pending, inProgress, completed }
-
-extension GymTaskStatusDetails on GymTaskStatus {
-  String get label => switch (this) {
-    GymTaskStatus.pending => 'Pending',
-    GymTaskStatus.inProgress => 'In progress',
-    GymTaskStatus.completed => 'Completed',
-  };
-
-  IconData get icon => switch (this) {
-    GymTaskStatus.pending => Icons.pending_actions_outlined,
-    GymTaskStatus.inProgress => Icons.sync,
-    GymTaskStatus.completed => Icons.task_alt,
-  };
-}
-
 /// A purchasable membership plan.
 class MembershipPlan {
   const MembershipPlan({
@@ -58,7 +41,6 @@ class Member {
     required this.planId,
     required this.joinDate,
     required this.expiryDate,
-    this.assignedTrainerId,
     this.imageUrl,
     this.lastWorkout,
     this.oldWeight,
@@ -71,7 +53,6 @@ class Member {
   String planId;
   DateTime joinDate;
   DateTime expiryDate;
-  String? assignedTrainerId;
   String? imageUrl;
   String? lastWorkout;
   double? oldWeight;
@@ -81,45 +62,27 @@ class Member {
       expiryDate.isBefore(DateTime.now()) ? MemberStatus.expired : MemberStatus.active;
 }
 
-/// A task assigned to a personal trainer.
+/// A task assigned to a gym member.
 class GymTask {
   GymTask({
     required this.id,
     required this.title,
-    required this.trainerId,
     required this.memberName,
     required this.priority,
     required this.dueDate,
     required this.instructions,
-    this.status = GymTaskStatus.pending,
     this.photoSubmitted = false,
     this.photoApproved = false,
   });
 
   final String id;
   String title;
-  String trainerId;
   String memberName;
   String priority; // High / Medium / Low
   String dueDate;
   String instructions;
-  GymTaskStatus status;
   bool photoSubmitted;
   bool photoApproved;
-
-  String? get videoUrl {
-    final lowercase = title.toLowerCase();
-    if (lowercase.contains('bench press')) {
-      return 'videos/00251201-Barbell-Bench-Press-Chest.mp4';
-    } else if (lowercase.contains('dumbbell fly')) {
-      return 'videos/03081201-Dumbbell-Fly-Chest.mp4';
-    } else if (lowercase.contains('seated fly')) {
-      return 'videos/05961201-Lever-Seated-Fly-Chest.mp4';
-    } else if (lowercase.contains('chest press')) {
-      return 'videos/21951201-Lever-Chest-Press-VERSION-3-Chest+.mp4';
-    }
-    return null;
-  }
 }
 
 /// A recorded payment (membership purchase or renewal).

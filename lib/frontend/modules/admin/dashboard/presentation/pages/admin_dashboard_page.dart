@@ -7,13 +7,11 @@ import 'package:fitness_webapp/frontend/widgets/video_player_stub.dart'
 
 part 'admin_overview_view.dart';
 part 'admin_members_view.dart';
-part 'admin_trainers_view.dart';
 part 'admin_tasks_view.dart';
 part 'admin_more_view.dart';
-part 'admin_add_trainer_dialog.dart';
 
-/// The Super Admin console shell: a top bar, a five-section bottom navigation
-/// rail (Dashboard · Members · Trainers · Tasks · More) and the active view.
+/// The Super Admin console shell: a top bar, a four-section bottom navigation
+/// rail (Dashboard · Members · Tasks · More) and the active view.
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key});
 
@@ -27,8 +25,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   static const _sections = [
     (title: 'Dashboard', subtitle: 'Platform overview and today\'s activity.'),
     (title: 'Members', subtitle: 'Memberships, plans, renewals and search.'),
-    (title: 'Trainers', subtitle: 'Create trainers, assign members and tasks.'),
-    (title: 'Tasks', subtitle: 'Create, track and approve trainer tasks.'),
+    (title: 'Tasks', subtitle: 'Create and assign tasks to members.'),
     (title: 'More', subtitle: 'Reports, payments, settings and account.'),
   ];
 
@@ -70,8 +67,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                         switch (_pageIndex) {
                           0 => _AdminOverviewView(state: state, onNavigate: _goTo),
                           1 => _AdminMembersView(state: state),
-                          2 => _AdminTrainersView(state: state),
-                          3 => _AdminTasksView(state: state),
+                          2 => _AdminTasksView(state: state),
                           _ => _AdminMoreView(state: state),
                         },
                       ],
@@ -192,7 +188,6 @@ class _AdminBottomNav extends StatelessWidget {
   static const _items = [
     (icon: Icons.dashboard_outlined, selectedIcon: Icons.dashboard, label: 'Dashboard'),
     (icon: Icons.people_alt_outlined, selectedIcon: Icons.people_alt, label: 'Members'),
-    (icon: Icons.fitness_center_outlined, selectedIcon: Icons.fitness_center, label: 'Trainers'),
     (icon: Icons.assignment_outlined, selectedIcon: Icons.assignment, label: 'Tasks'),
     (icon: Icons.menu, selectedIcon: Icons.menu_open, label: 'More'),
   ];

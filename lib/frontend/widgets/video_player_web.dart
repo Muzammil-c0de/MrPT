@@ -18,6 +18,12 @@ Widget createVideoPlayer(String videoUrl) {
       ..style.borderRadius = '8px'
       ..style.backgroundColor = 'black'
       ..controls = true
+      // Strip the native overflow ("three-dot") menu: no download, no
+      // playback-speed, no Picture-in-Picture and no remote-playback entries.
+      // With every overflow item removed, the browser hides the menu.
+      ..setAttribute('controlsList', 'nodownload noplaybackrate noremoteplayback')
+      ..setAttribute('disablePictureInPicture', 'true')
+      ..setAttribute('disableRemotePlayback', 'true')
       ..autoplay = false
       ..muted = true
       ..loop = true,
