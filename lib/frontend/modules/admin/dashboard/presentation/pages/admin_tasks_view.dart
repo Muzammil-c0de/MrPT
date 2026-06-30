@@ -382,7 +382,10 @@ class _CreateTaskDialog extends StatefulWidget {
 
   @override
   State<_CreateTaskDialog> createState() => _CreateTaskDialogState();
+}
+
 class _CreateTaskDialogState extends State<_CreateTaskDialog> {
+
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
 
