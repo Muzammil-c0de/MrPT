@@ -393,6 +393,7 @@ class _AddMemberDialogState extends State<_AddMemberDialog> {
   final _lastWorkoutController = TextEditingController();
   final _oldWeightController = TextEditingController();
   final _currentWeightController = TextEditingController();
+  final _passwordController = TextEditingController();
 
   late String _planId = widget.state.plans.first.id;
 
@@ -404,6 +405,7 @@ class _AddMemberDialogState extends State<_AddMemberDialog> {
     _lastWorkoutController.dispose();
     _oldWeightController.dispose();
     _currentWeightController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
@@ -416,6 +418,7 @@ class _AddMemberDialogState extends State<_AddMemberDialog> {
       name: _nameController.text,
       phone: _phoneController.text,
       planId: _planId,
+      password: _passwordController.text,
       imageUrl: _imageUrlController.text.trim().isEmpty ? null : _imageUrlController.text.trim(),
       lastWorkout: _lastWorkoutController.text.trim().isEmpty ? null : _lastWorkoutController.text.trim(),
       oldWeight: oldWeight,
@@ -448,7 +451,7 @@ class _AddMemberDialogState extends State<_AddMemberDialog> {
       ),
       content: SizedBox(
         width: 420,
-        height: 480,
+        height: 520,
         child: SingleChildScrollView(
           child: Form(
             key: _formKey,
@@ -497,6 +500,19 @@ class _AddMemberDialogState extends State<_AddMemberDialog> {
                       ),
                   ],
                   onChanged: (value) => setState(() => _planId = value!),
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Login Password',
+                    prefixIcon: Icon(Icons.lock_outlined),
+                  ),
+                  validator: (value) =>
+                      (value == null || value.trim().length < 4)
+                      ? 'Enter a password (min 4 characters).'
+                      : null,
                 ),
                 const SizedBox(height: 14),
                 TextFormField(

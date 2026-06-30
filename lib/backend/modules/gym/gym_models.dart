@@ -41,6 +41,8 @@ class Member {
     required this.planId,
     required this.joinDate,
     required this.expiryDate,
+    required this.password,
+    this.email,
     this.imageUrl,
     this.lastWorkout,
     this.oldWeight,
@@ -53,6 +55,8 @@ class Member {
   String planId;
   DateTime joinDate;
   DateTime expiryDate;
+  String password;
+  String? email;
   String? imageUrl;
   String? lastWorkout;
   double? oldWeight;

@@ -58,20 +58,44 @@ class AppState extends ChangeNotifier {
     return null;
   }
 
+  Member? _findMember(String id) {
+    final query = id.trim().toLowerCase();
+    for (final member in _members) {
+      if (member.id.toLowerCase() == query) return member;
+    }
+    return null;
+  }
+
   LoginResult login(String id, String password) {
     if (id.trim().isEmpty || password.isEmpty) {
       return 'Enter your ID and password.';
     }
     final user = _findUser(id);
-    if (user == null) return 'No account found for that ID.';
-    if (!user.active) {
-      return 'This account is disabled. Contact your administrator.';
+    if (user != null) {
+      if (!user.active) {
+        return 'This account is disabled. Contact your administrator.';
+      }
+      if (user.password != password) return 'Incorrect password. Please try again.';
+      _currentUser = user;
+      _persistSession();
+      notifyListeners();
+      return null;
     }
-    if (user.password != password) return 'Incorrect password. Please try again.';
-    _currentUser = user;
-    _persistSession();
-    notifyListeners();
-    return null;
+    final member = _findMember(id);
+    if (member != null) {
+      if (member.password != password) return 'Incorrect password. Please try again.';
+      _currentUser = AppUser(
+        id: member.id,
+        name: member.name,
+        role: UserRole.member,
+        password: member.password,
+        email: member.phone,
+      );
+      _persistSession();
+      notifyListeners();
+      return null;
+    }
+    return 'No account found for that ID.';
   }
 
   void logout() {
@@ -87,7 +111,20 @@ class AppState extends ChangeNotifier {
       final id = prefs.getString(_sessionKey);
       if (id != null) {
         final user = _findUser(id);
-        if (user != null && user.active) _currentUser = user;
+        if (user != null && user.active) {
+          _currentUser = user;
+        } else {
+          final member = _findMember(id);
+          if (member != null) {
+            _currentUser = AppUser(
+              id: member.id,
+              name: member.name,
+              role: UserRole.member,
+              password: member.password,
+              email: member.phone,
+            );
+          }
+        }
       }
     } catch (_) {
       // Storage unavailable (e.g. private mode); fall back to a fresh session.
@@ -152,6 +189,7 @@ class AppState extends ChangeNotifier {
     required String name,
     required String phone,
     required String planId,
+    required String password,
     String? imageUrl,
     String? lastWorkout,
     double? oldWeight,
@@ -167,6 +205,7 @@ class AppState extends ChangeNotifier {
       planId: planId,
       joinDate: now,
       expiryDate: DateTime(now.year, now.month + plan.durationMonths, now.day),
+      password: password,
       imageUrl: imageUrl,
       lastWorkout: lastWorkout,
       oldWeight: oldWeight,
@@ -295,6 +334,7 @@ class AppState extends ChangeNotifier {
       required String phone,
       required String planId,
       required int joinedDaysAgo,
+      required String password,
       String? imageUrl,
       String? lastWorkout,
       double? oldWeight,
@@ -310,6 +350,7 @@ class AppState extends ChangeNotifier {
         planId: planId,
         joinDate: join,
         expiryDate: DateTime(join.year, join.month + plan.durationMonths, join.day),
+        password: password,
         imageUrl: imageUrl,
         lastWorkout: lastWorkout,
         oldWeight: oldWeight,
@@ -334,6 +375,7 @@ class AppState extends ChangeNotifier {
       phone: '+1 555-0147',
       planId: 'PLN-3',
       joinedDaysAgo: 12,
+      password: 'password123',
       imageUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
       lastWorkout: 'Squat Technique & Glute activation (Yesterday)',
       oldWeight: 68.5,
@@ -344,6 +386,7 @@ class AppState extends ChangeNotifier {
       phone: '+1 555-0192',
       planId: 'PLN-2',
       joinedDaysAgo: 8,
+      password: 'password123',
       imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
       lastWorkout: 'High-intensity interval conditioning (2 days ago)',
       oldWeight: 85.0,
@@ -354,6 +397,7 @@ class AppState extends ChangeNotifier {
       phone: '+1 555-0163',
       planId: 'PLN-1',
       joinedDaysAgo: 4,
+      password: 'password123',
       imageUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150',
       lastWorkout: 'Active mobility & Hip mobility drill (Today)',
       oldWeight: 58.2,
@@ -364,6 +408,7 @@ class AppState extends ChangeNotifier {
       phone: '+1 555-0118',
       planId: 'PLN-1',
       joinedDaysAgo: 70,
+      password: 'password123',
       imageUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
       lastWorkout: 'Deadlift heavy sets & core accessory (3 days ago)',
       oldWeight: 92.4,
@@ -374,6 +419,7 @@ class AppState extends ChangeNotifier {
       phone: '+1 555-0175',
       planId: 'PLN-2',
       joinedDaysAgo: 2,
+      password: 'password123',
       imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
       lastWorkout: 'None yet (Onboarding screen pending)',
       oldWeight: 71.0,

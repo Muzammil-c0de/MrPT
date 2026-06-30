@@ -1,11 +1,12 @@
 /// Roles supported by the FitPilot platform.
-enum UserRole { superAdmin, branchManager }
+enum UserRole { superAdmin, branchManager, member }
 
 extension UserRoleDetails on UserRole {
   String get label {
     return switch (this) {
       UserRole.superAdmin => 'Super Admin',
       UserRole.branchManager => 'Branch Manager',
+      UserRole.member => 'Member',
     };
   }
 
@@ -14,6 +15,7 @@ extension UserRoleDetails on UserRole {
     return switch (this) {
       UserRole.superAdmin => 'ADM',
       UserRole.branchManager => 'MGR',
+      UserRole.member => 'MBR',
     };
   }
 }

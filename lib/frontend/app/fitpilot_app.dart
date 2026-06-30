@@ -59,7 +59,10 @@ class _AuthGate extends StatelessWidget {
     } else if (user == null) {
       screen = const LoginPage();
     } else {
-      screen = const AdminDashboardPage();
+      screen = switch (user.role) {
+        UserRole.member => FitnessHomePage(onLogout: state.logout),
+        _ => const AdminDashboardPage(),
+      };
     }
 
     return AnimatedSwitcher(
