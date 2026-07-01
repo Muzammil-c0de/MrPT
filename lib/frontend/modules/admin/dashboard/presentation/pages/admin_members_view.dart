@@ -24,7 +24,10 @@ class _AdminMembersViewState extends State<_AdminMembersView> {
   Widget build(BuildContext context) {
     final state = widget.state;
     final query = _query.trim().toLowerCase();
-    final members = state.members.where((m) {
+    // Directory is restricted to Ava for now.
+    final visibleMembers =
+        state.members.where((m) => m.name.toLowerCase().contains('ava')).toList();
+    final members = visibleMembers.where((m) {
       if (query.isEmpty) return true;
       return m.name.toLowerCase().contains(query) ||
           m.id.toLowerCase().contains(query) ||
@@ -45,7 +48,7 @@ class _AdminMembersViewState extends State<_AdminMembersView> {
                     action: tight
                         ? null
                         : AppSmallChip(
-                            label: '${state.totalMembers} total',
+                            label: '${visibleMembers.length} total',
                             color: AppColors.yellow,
                             textColor: AppColors.charcoal,
                           ),
