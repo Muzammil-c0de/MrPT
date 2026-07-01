@@ -3,6 +3,10 @@ import 'package:fitness_webapp/backend/backend.dart';
 import 'package:fitness_webapp/frontend/theme/app_theme.dart';
 import 'package:fitness_webapp/frontend/widgets/app_widgets.dart';
 import 'package:flutter/material.dart';
+import 'package:fitness_webapp/frontend/widgets/video_player_stub.dart'
+    if (dart.library.html) 'package:fitness_webapp/frontend/widgets/video_player_web.dart' as video_player;
+import 'package:fitness_webapp/frontend/widgets/image_picker_stub.dart'
+    if (dart.library.html) 'package:fitness_webapp/frontend/widgets/image_picker_web.dart' as image_picker;
 
 const _background = Color(0xFF090907);
 const _surface = Color(0xFF17150F);
@@ -71,6 +75,9 @@ class _FitnessHomePageState extends State<FitnessHomePage> {
     'Focus on progression, not perfection.',
     'Your body can stand almost anything. It\'s your mind that you have to convince.',
   ];
+
+  // Transformation photo upload state
+  bool _uploadingPhoto = false;
 
   // Body Measurements State
   double _chestMeasurement = 96.5;
@@ -200,11 +207,11 @@ class _FitnessHomePageState extends State<FitnessHomePage> {
     Widget currentTab() {
       switch (_pageIndex) {
         case 0:
-          return _buildHomeTab(member, planName);
+          return _buildHomeTab(member, planName, state);
         case 1:
-          return _buildWorkoutTab(member);
+          return _buildWorkoutTab(member, state);
         case 2:
-          return _buildProgressTab(member);
+          return _buildProgressTab(member, state);
         case 3:
           return _buildChatTab(member);
         default:
@@ -274,14 +281,26 @@ class _FitnessHomePageState extends State<FitnessHomePage> {
   }
 
   // --- Home Tab ---
-  Widget _buildHomeTab(Member member, String planName) {
+  Widget _buildHomeTab(Member member, String planName, AppState state) {
     final progress = member.expiryDate.difference(DateTime.now()).inDays;
     final int totalDays = member.expiryDate.difference(member.joinDate).inDays;
     final double expirationProgress = totalDays == 0 ? 0.0 : (progress / totalDays).clamp(0.0, 1.0);
 
+    // Latest task with a video that the trainer assigned to this member.
+    final videoTasks = state.tasks
+        .where((t) => t.memberName == member.name && t.videoUrl != null)
+        .toList();
+    final GymTask? latestVideoTask = videoTasks.isNotEmpty ? videoTasks.last : null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Latest task video banner
+        if (latestVideoTask != null) ...[
+          _buildLatestVideoBanner(latestVideoTask),
+          const SizedBox(height: 16),
+        ],
+
         // Greeting & Motivational Card
         Container(
           padding: const EdgeInsets.all(20),
@@ -502,7 +521,7 @@ class _FitnessHomePageState extends State<FitnessHomePage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.between,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text('Membership Status', style: TextStyle(fontWeight: FontWeight.bold)),
                   Text(
@@ -536,8 +555,94 @@ class _FitnessHomePageState extends State<FitnessHomePage> {
     );
   }
 
+  // A prominent banner on the home tab showing the latest task video the
+  // trainer assigned to this member.
+  Widget _buildLatestVideoBanner(GymTask task) {
+    return Container(
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(_radius),
+        border: Border.all(color: _line),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: _yellow,
+                    borderRadius: BorderRadius.circular(_radius),
+                  ),
+                  child: const Icon(Icons.play_arrow_rounded, color: _charcoal),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Latest from your trainer',
+                        style: TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        task.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const AppSmallChip(
+                  label: 'New',
+                  color: Color(0xFF1565C0),
+                  textColor: Colors.blueAccent,
+                ),
+              ],
+            ),
+          ),
+          // Video
+          AspectRatio(
+            aspectRatio: 16 / 9,
+            child: video_player.createVideoPlayer(task.videoUrl!),
+          ),
+          // Footer hint
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Row(
+              children: [
+                const Icon(Icons.fitness_center_outlined, color: _yellow, size: 16),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Open the Workout tab to submit your progress photo.',
+                    style: const TextStyle(color: _muted, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // --- Workout Tab ---
-  Widget _buildWorkoutTab(Member member) {
+  Widget _buildWorkoutTab(Member member, AppState state) {
+    final memberTasks = state.tasks.where((t) => t.memberName == member.name).toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -642,40 +747,153 @@ class _FitnessHomePageState extends State<FitnessHomePage> {
         ),
         const SizedBox(height: 16),
 
-        // Video Demonstration
-        Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: _charcoal,
-            borderRadius: BorderRadius.circular(_radius),
-            border: Border.all(color: _line),
+        // Trainer Assigned Tasks with Videos
+        if (memberTasks.isNotEmpty) ...[
+          const Text(
+            'Assigned Tasks from Trainer',
+            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Colors.white),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Workout Video Walkthroughs', style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 12),
-              Container(
-                height: 180,
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: BorderRadius.circular(_radius),
-                  border: Border.all(color: _line),
-                ),
-                child: const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+          const SizedBox(height: 12),
+          for (final task in memberTasks) ...[
+            Container(
+              padding: const EdgeInsets.all(18),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: _charcoal,
+                borderRadius: BorderRadius.circular(_radius),
+                border: Border.all(color: _line),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Icon(Icons.play_circle_outline, color: _yellow, size: 48),
-                      SizedBox(height: 8),
-                      Text('Squat & Hinge Technique Cues', style: TextStyle(color: Colors.white70)),
+                      Expanded(
+                        child: Text(
+                          task.title,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+                        ),
+                      ),
+                      if (task.photoApproved)
+                        const AppSmallChip(
+                          label: 'Approved',
+                          color: Color(0xFF1B5E20),
+                          textColor: Colors.greenAccent,
+                        )
+                      else if (task.photoSubmitted)
+                        const AppSmallChip(
+                          label: 'Awaiting Review',
+                          color: Color(0xFFE65100),
+                          textColor: Colors.orangeAccent,
+                        )
+                      else
+                        const AppSmallChip(
+                          label: 'Assigned',
+                          color: Color(0xFF1565C0),
+                          textColor: Colors.blueAccent,
+                        ),
                     ],
                   ),
-                ),
+                  const SizedBox(height: 8),
+                  if (task.instructions.isNotEmpty) ...[
+                    Text(
+                      task.instructions,
+                      style: const TextStyle(color: _muted, fontSize: 14),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (task.videoUrl != null) ...[
+                    Container(
+                      height: 200,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(_radius),
+                        border: Border.all(color: _line),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(_radius - 1),
+                        child: video_player.createVideoPlayer(task.videoUrl!),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (!task.photoSubmitted && !task.photoApproved) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          state.submitTaskPhoto(task.id);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Progress photo submitted for ${task.title}!')),
+                          );
+                        },
+                        icon: const Icon(Icons.camera_alt_outlined),
+                        label: const Text('Submit Progress Photo'),
+                      ),
+                    ),
+                  ] else if (task.photoSubmitted && !task.photoApproved) ...[
+                    const Row(
+                      children: [
+                        Icon(Icons.hourglass_empty, color: Colors.orangeAccent, size: 16),
+                        SizedBox(width: 8),
+                        Text(
+                          'Your submission is under review by the trainer.',
+                          style: TextStyle(color: Colors.orangeAccent, fontSize: 13, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ] else if (task.photoApproved) ...[
+                    const Row(
+                      children: [
+                        Icon(Icons.check_circle_outline, color: Colors.greenAccent, size: 16),
+                        SizedBox(width: 8),
+                        Text(
+                          'Completed and approved!',
+                          style: TextStyle(color: Colors.greenAccent, fontSize: 13, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
               ),
-            ],
+            ),
+          ],
+        ] else ...[
+          // Video Demonstration fallback
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: _charcoal,
+              borderRadius: BorderRadius.circular(_radius),
+              border: Border.all(color: _line),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Workout Video Walkthroughs', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+                Container(
+                  height: 180,
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(_radius),
+                    border: Border.all(color: _line),
+                  ),
+                  child: const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.play_circle_outline, color: _yellow, size: 48),
+                        SizedBox(height: 8),
+                        Text('Squat & Hinge Technique Cues', style: TextStyle(color: Colors.white70)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
         const SizedBox(height: 16),
 
         // History list
@@ -709,8 +927,26 @@ class _FitnessHomePageState extends State<FitnessHomePage> {
     );
   }
 
+  Future<void> _uploadProgressPhoto(Member member, AppState state) async {
+    if (_uploadingPhoto) return;
+    setState(() => _uploadingPhoto = true);
+    try {
+      final dataUrl = await image_picker.pickImageAsDataUrl();
+      if (dataUrl != null) {
+        state.addProgressPhoto(member.id, dataUrl);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Progress photo added to your transformation.')),
+          );
+        }
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingPhoto = false);
+    }
+  }
+
   // --- Progress Tab ---
-  Widget _buildProgressTab(Member member) {
+  Widget _buildProgressTab(Member member, AppState state) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -721,6 +957,10 @@ class _FitnessHomePageState extends State<FitnessHomePage> {
                 color: Colors.white,
               ),
         ),
+        const SizedBox(height: 16),
+
+        // Transformation photos
+        _buildTransformationCard(member, state),
         const SizedBox(height: 16),
 
         // Custom weight line chart
@@ -881,6 +1121,180 @@ class _FitnessHomePageState extends State<FitnessHomePage> {
                 child: const Text('Save Measurements'),
               ),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Transformation photos card: upload workout photos and compare before/after.
+  Widget _buildTransformationCard(Member member, AppState state) {
+    final photos = member.progressPhotos;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(_radius),
+        border: Border.all(color: _line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Transformation Photos',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+              ),
+              if (photos.isNotEmpty)
+                Text(
+                  '${photos.length} photo${photos.length == 1 ? '' : 's'}',
+                  style: const TextStyle(color: _muted, fontSize: 12),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Upload a photo after each workout to track your transformation over time.',
+            style: TextStyle(color: _muted, fontSize: 13),
+          ),
+          const SizedBox(height: 14),
+
+          if (photos.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 28),
+              decoration: BoxDecoration(
+                color: _charcoal,
+                borderRadius: BorderRadius.circular(_radius),
+                border: Border.all(color: _line),
+              ),
+              child: const Column(
+                children: [
+                  Icon(Icons.add_a_photo_outlined, color: _yellow, size: 40),
+                  SizedBox(height: 10),
+                  Text('No photos yet', style: TextStyle(fontWeight: FontWeight.bold)),
+                  SizedBox(height: 4),
+                  Text(
+                    'Upload your first photo to start your journey.',
+                    style: TextStyle(color: _muted, fontSize: 12),
+                  ),
+                ],
+              ),
+            )
+          else ...[
+            // Before / After comparison
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _transformationSlot(
+                      label: 'Before',
+                      dataUrl: photos.first,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _transformationSlot(
+                      label: photos.length == 1 ? 'Latest' : 'After',
+                      dataUrl: photos.last,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            // All photos timeline
+            const Text(
+              'All photos',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 96,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: photos.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                itemBuilder: (context, index) {
+                  return Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(_radius),
+                        child: Image.network(
+                          photos[index],
+                          width: 96,
+                          height: 96,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      Positioned(
+                        top: 2,
+                        right: 2,
+                        child: InkWell(
+                          onTap: () => state.removeProgressPhoto(member.id, index),
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: const BoxDecoration(
+                              color: Colors.black54,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.close, size: 14, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _uploadingPhoto ? null : () => _uploadProgressPhoto(member, state),
+              icon: _uploadingPhoto
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: _charcoal),
+                    )
+                  : const Icon(Icons.add_a_photo_outlined),
+              label: Text(_uploadingPhoto ? 'Uploading...' : 'Upload Workout Photo'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _yellow,
+                foregroundColor: _charcoal,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _transformationSlot({required String label, required String dataUrl}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(_radius),
+          child: AspectRatio(
+            aspectRatio: 3 / 4,
+            child: Image.network(
+              dataUrl,
+              fit: BoxFit.cover,
+              width: double.infinity,
+            ),
           ),
         ),
       ],
@@ -1145,7 +1559,7 @@ class _WeightChartPainter extends CustomPainter {
     final paint = Paint()
       ..color = _yellow
       ..strokeWidth = 3
-      ..style = PaintStyle.stroke;
+      ..style = PaintingStyle.stroke;
 
     final fillPaint = Paint()
       ..shader = LinearGradient(
@@ -1174,11 +1588,11 @@ class _WeightChartPainter extends CustomPainter {
 
     final dotPaint = Paint()
       ..color = _yellow
-      ..style = PaintStyle.fill;
+      ..style = PaintingStyle.fill;
     final dotBorderPaint = Paint()
       ..color = _charcoal
       ..strokeWidth = 2
-      ..style = PaintStyle.stroke;
+      ..style = PaintingStyle.stroke;
 
     canvas.drawCircle(Offset(0, size.height * 0.7), 6, dotPaint);
     canvas.drawCircle(Offset(0, size.height * 0.7), 6, dotBorderPaint);

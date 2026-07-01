@@ -61,9 +61,30 @@ class AppState extends ChangeNotifier {
   Member? _findMember(String id) {
     final query = id.trim().toLowerCase();
     for (final member in _members) {
-      if (member.id.toLowerCase() == query) return member;
+      if (member.id.toLowerCase() == query ||
+          member.loginId.toLowerCase() == query) {
+        return member;
+      }
     }
     return null;
+  }
+
+  /// Whether [loginId] is already used by another account (member or staff).
+  /// Pass [ignoreMemberId] to exclude a member from the check when editing it.
+  bool isLoginIdTaken(String loginId, {String? ignoreMemberId}) {
+    final query = loginId.trim().toLowerCase();
+    if (query.isEmpty) return false;
+    for (final user in _users) {
+      if (user.id.toLowerCase() == query) return true;
+    }
+    for (final member in _members) {
+      if (member.id == ignoreMemberId) continue;
+      if (member.id.toLowerCase() == query ||
+          member.loginId.toLowerCase() == query) {
+        return true;
+      }
+    }
+    return false;
   }
 
   LoginResult login(String id, String password) {
@@ -190,6 +211,7 @@ class AppState extends ChangeNotifier {
     required String phone,
     required String planId,
     required String password,
+    String? loginId,
     String? imageUrl,
     String? lastWorkout,
     double? oldWeight,
@@ -206,6 +228,7 @@ class AppState extends ChangeNotifier {
       joinDate: now,
       expiryDate: DateTime(now.year, now.month + plan.durationMonths, now.day),
       password: password,
+      loginId: loginId,
       imageUrl: imageUrl,
       lastWorkout: lastWorkout,
       oldWeight: oldWeight,
@@ -215,6 +238,38 @@ class AppState extends ChangeNotifier {
     _recordPayment(member, plan);
     notifyListeners();
     return member;
+  }
+
+  /// Sets the login ID and/or password an admin assigns to an existing member.
+  void updateMemberCredentials(
+    String memberId, {
+    String? loginId,
+    String? password,
+  }) {
+    final member = _members.firstWhere((m) => m.id == memberId);
+    if (loginId != null && loginId.trim().isNotEmpty) {
+      member.loginId = loginId.trim();
+    }
+    if (password != null && password.isNotEmpty) {
+      member.password = password;
+    }
+    notifyListeners();
+  }
+
+  /// Appends a progress/transformation photo (a data URL) for the member.
+  void addProgressPhoto(String memberId, String dataUrl) {
+    final member = _members.firstWhere((m) => m.id == memberId);
+    member.progressPhotos.add(dataUrl);
+    notifyListeners();
+  }
+
+  /// Removes the progress photo at [index] for the member.
+  void removeProgressPhoto(String memberId, int index) {
+    final member = _members.firstWhere((m) => m.id == memberId);
+    if (index >= 0 && index < member.progressPhotos.length) {
+      member.progressPhotos.removeAt(index);
+      notifyListeners();
+    }
   }
 
   void renewMember(String memberId) {
@@ -247,6 +302,7 @@ class AppState extends ChangeNotifier {
     required String priority,
     required String dueDate,
     required String instructions,
+    String? videoUrl,
   }) {
     _taskCounter++;
     final task = GymTask(
@@ -256,10 +312,17 @@ class AppState extends ChangeNotifier {
       priority: priority,
       dueDate: dueDate.trim(),
       instructions: instructions.trim(),
+      videoUrl: videoUrl,
     );
     _tasks.add(task);
     notifyListeners();
     return task;
+  }
+
+  void submitTaskPhoto(String taskId) {
+    final task = _tasks.firstWhere((t) => t.id == taskId);
+    task.photoSubmitted = true;
+    notifyListeners();
   }
 
   void approveTaskPhoto(String taskId, bool approved) {
@@ -335,6 +398,7 @@ class AppState extends ChangeNotifier {
       required String planId,
       required int joinedDaysAgo,
       required String password,
+      String? loginId,
       String? imageUrl,
       String? lastWorkout,
       double? oldWeight,
@@ -351,6 +415,7 @@ class AppState extends ChangeNotifier {
         joinDate: join,
         expiryDate: DateTime(join.year, join.month + plan.durationMonths, join.day),
         password: password,
+        loginId: loginId,
         imageUrl: imageUrl,
         lastWorkout: lastWorkout,
         oldWeight: oldWeight,
@@ -376,6 +441,7 @@ class AppState extends ChangeNotifier {
       planId: 'PLN-3',
       joinedDaysAgo: 12,
       password: 'password123',
+      loginId: 'ava',
       imageUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
       lastWorkout: 'Squat Technique & Glute activation (Yesterday)',
       oldWeight: 68.5,
@@ -387,6 +453,7 @@ class AppState extends ChangeNotifier {
       planId: 'PLN-2',
       joinedDaysAgo: 8,
       password: 'password123',
+      loginId: 'darius',
       imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
       lastWorkout: 'High-intensity interval conditioning (2 days ago)',
       oldWeight: 85.0,
@@ -398,6 +465,7 @@ class AppState extends ChangeNotifier {
       planId: 'PLN-1',
       joinedDaysAgo: 4,
       password: 'password123',
+      loginId: 'mina',
       imageUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150',
       lastWorkout: 'Active mobility & Hip mobility drill (Today)',
       oldWeight: 58.2,
@@ -409,6 +477,7 @@ class AppState extends ChangeNotifier {
       planId: 'PLN-1',
       joinedDaysAgo: 70,
       password: 'password123',
+      loginId: 'theo',
       imageUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
       lastWorkout: 'Deadlift heavy sets & core accessory (3 days ago)',
       oldWeight: 92.4,
@@ -420,6 +489,7 @@ class AppState extends ChangeNotifier {
       planId: 'PLN-2',
       joinedDaysAgo: 2,
       password: 'password123',
+      loginId: 'lena',
       imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
       lastWorkout: 'None yet (Onboarding screen pending)',
       oldWeight: 71.0,
@@ -434,6 +504,7 @@ class AppState extends ChangeNotifier {
         priority: 'High',
         dueDate: 'Today, 6:00 PM',
         instructions: 'Check chest contact point, elbow tuck angle, and bar path. Add two corrective cues for shoulder stability.',
+        videoUrl: 'videos/Bench-Press-Chest.mp4',
       ),
       GymTask(
         id: 'TSK-0002',
@@ -442,6 +513,7 @@ class AppState extends ChangeNotifier {
         priority: 'Medium',
         dueDate: 'Tomorrow, 9:00 AM',
         instructions: 'Create a 4-set chest hypertrophy sequence. Focus on deep stretch and controlled concentric phase.',
+        videoUrl: 'videos/Dumbbell-Fly-Chest.mp4',
       ),
       GymTask(
         id: 'TSK-0003',
@@ -450,6 +522,7 @@ class AppState extends ChangeNotifier {
         priority: 'High',
         dueDate: 'Thu, 8:00 PM',
         instructions: 'Review seat height and handle alignment. Add remarks on avoiding excessive shoulder external rotation.',
+        videoUrl: 'videos/Lever-Seated-Fly-Chest.mp4',
         photoSubmitted: true,
       ),
       GymTask(
@@ -459,6 +532,7 @@ class AppState extends ChangeNotifier {
         priority: 'Low',
         dueDate: 'Completed today',
         instructions: 'Check push path and scapular retraction against pad. Provide feedback on power output.',
+        videoUrl: 'videos/Chest-Press3.mp4',
         photoSubmitted: true,
       ),
       GymTask(

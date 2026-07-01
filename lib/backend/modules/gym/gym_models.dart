@@ -42,14 +42,22 @@ class Member {
     required this.joinDate,
     required this.expiryDate,
     required this.password,
+    String? loginId,
     this.email,
     this.imageUrl,
     this.lastWorkout,
     this.oldWeight,
     this.currentWeight,
-  });
+    List<String>? progressPhotos,
+  })  : loginId = (loginId == null || loginId.trim().isEmpty) ? id : loginId.trim(),
+        progressPhotos = progressPhotos ?? <String>[];
 
   final String id;
+
+  /// The identifier the member types to sign in. Admin-assigned; defaults to
+  /// the auto-generated [id] when left blank.
+  String loginId;
+
   String name;
   String phone;
   String planId;
@@ -61,6 +69,10 @@ class Member {
   String? lastWorkout;
   double? oldWeight;
   double? currentWeight;
+
+  /// Progress/transformation photos the member uploads, oldest first. Stored as
+  /// data URLs so they render directly with [Image.network] on web.
+  final List<String> progressPhotos;
 
   MemberStatus get status =>
       expiryDate.isBefore(DateTime.now()) ? MemberStatus.expired : MemberStatus.active;
@@ -75,6 +87,7 @@ class GymTask {
     required this.priority,
     required this.dueDate,
     required this.instructions,
+    this.videoUrl,
     this.photoSubmitted = false,
     this.photoApproved = false,
   });
@@ -85,6 +98,7 @@ class GymTask {
   String priority; // High / Medium / Low
   String dueDate;
   String instructions;
+  String? videoUrl;
   bool photoSubmitted;
   bool photoApproved;
 }

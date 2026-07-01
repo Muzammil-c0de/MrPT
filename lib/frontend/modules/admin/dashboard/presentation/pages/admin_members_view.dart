@@ -215,6 +215,11 @@ class _MemberCard extends StatelessWidget {
                 color: AppColors.surfaceAlt,
                 textColor: AppColors.ink,
               ),
+              AppSmallChip(
+                label: 'Login: ${member.loginId}',
+                color: AppColors.surfaceAlt,
+                textColor: AppColors.yellow,
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -248,15 +253,29 @@ class _MemberCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: () {
-              state.renewMember(member.id);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${member.name} membership renewed.')),
-              );
-            },
-            icon: const Icon(Icons.autorenew, size: 18),
-            label: const Text('Renew'),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    state.renewMember(member.id);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('${member.name} membership renewed.')),
+                    );
+                  },
+                  icon: const Icon(Icons.autorenew, size: 18),
+                  label: const Text('Renew'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _showEditLoginDialog(context, state, member),
+                  icon: const Icon(Icons.key_outlined, size: 18),
+                  label: const Text('Edit login'),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -376,6 +395,151 @@ Future<void> _showAddMemberDialog(BuildContext context, AppState state) async {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Edit login credentials dialog
+// ---------------------------------------------------------------------------
+
+Future<void> _showEditLoginDialog(
+  BuildContext context,
+  AppState state,
+  Member member,
+) async {
+  final saved = await showDialog<bool>(
+    context: context,
+    builder: (_) => _EditLoginDialog(state: state, member: member),
+  );
+  if (saved == true && context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Login updated for ${member.name}.')),
+    );
+  }
+}
+
+class _EditLoginDialog extends StatefulWidget {
+  const _EditLoginDialog({required this.state, required this.member});
+
+  final AppState state;
+  final Member member;
+
+  @override
+  State<_EditLoginDialog> createState() => _EditLoginDialogState();
+}
+
+class _EditLoginDialogState extends State<_EditLoginDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final _loginIdController =
+      TextEditingController(text: widget.member.loginId);
+  final _passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    _loginIdController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    if (!_formKey.currentState!.validate()) return;
+    widget.state.updateMemberCredentials(
+      widget.member.id,
+      loginId: _loginIdController.text,
+      password: _passwordController.text,
+    );
+    Navigator.of(context).pop(true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(kAppRadius),
+        side: const BorderSide(color: AppColors.line),
+      ),
+      title: Row(
+        children: [
+          const AppIconBadge(icon: Icons.key_outlined, size: 40),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Edit login',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w900),
+            ),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: 420,
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Set the ID and password ${widget.member.name} uses to sign in.',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: AppColors.muted),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _loginIdController,
+                autocorrect: false,
+                decoration: const InputDecoration(
+                  labelText: 'Login ID',
+                  prefixIcon: Icon(Icons.badge_outlined),
+                ),
+                validator: (value) {
+                  final id = value?.trim() ?? '';
+                  if (id.length < 3) return 'Enter a login ID (min 3 characters).';
+                  if (widget.state
+                      .isLoginIdTaken(id, ignoreMemberId: widget.member.id)) {
+                    return 'That login ID is already in use.';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: _passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'New password',
+                  helperText: 'Leave blank to keep the current password.',
+                  prefixIcon: Icon(Icons.lock_outlined),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) return null;
+                  return value.trim().length < 4
+                      ? 'Password must be at least 4 characters.'
+                      : null;
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton.icon(
+          onPressed: _save,
+          icon: const Icon(Icons.check),
+          label: const Text('Save'),
+        ),
+      ],
+    );
+  }
+}
+
 class _AddMemberDialog extends StatefulWidget {
   const _AddMemberDialog({required this.state});
 
@@ -389,6 +553,7 @@ class _AddMemberDialogState extends State<_AddMemberDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _loginIdController = TextEditingController();
   final _imageUrlController = TextEditingController();
   final _lastWorkoutController = TextEditingController();
   final _oldWeightController = TextEditingController();
@@ -401,6 +566,7 @@ class _AddMemberDialogState extends State<_AddMemberDialog> {
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
+    _loginIdController.dispose();
     _imageUrlController.dispose();
     _lastWorkoutController.dispose();
     _oldWeightController.dispose();
@@ -419,6 +585,7 @@ class _AddMemberDialogState extends State<_AddMemberDialog> {
       phone: _phoneController.text,
       planId: _planId,
       password: _passwordController.text,
+      loginId: _loginIdController.text,
       imageUrl: _imageUrlController.text.trim().isEmpty ? null : _imageUrlController.text.trim(),
       lastWorkout: _lastWorkoutController.text.trim().isEmpty ? null : _lastWorkoutController.text.trim(),
       oldWeight: oldWeight,
@@ -500,6 +667,24 @@ class _AddMemberDialogState extends State<_AddMemberDialog> {
                       ),
                   ],
                   onChanged: (value) => setState(() => _planId = value!),
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _loginIdController,
+                  autocorrect: false,
+                  decoration: const InputDecoration(
+                    labelText: 'Login ID',
+                    helperText: 'The member types this to sign in.',
+                    prefixIcon: Icon(Icons.badge_outlined),
+                  ),
+                  validator: (value) {
+                    final id = value?.trim() ?? '';
+                    if (id.length < 3) return 'Enter a login ID (min 3 characters).';
+                    if (widget.state.isLoginIdTaken(id)) {
+                      return 'That login ID is already in use.';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 14),
                 TextFormField(

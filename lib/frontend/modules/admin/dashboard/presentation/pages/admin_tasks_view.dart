@@ -59,6 +59,8 @@ class _AdminTasksView extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         _PhotoApprovalsPanel(state: state),
+        const SizedBox(height: 16),
+        _VideoExerciseLibrary(state: state),
       ],
     );
   }
@@ -112,6 +114,122 @@ class _TaskCard extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+          if (task.videoUrl != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              height: 150,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(kAppRadius),
+                border: Border.all(color: AppColors.line),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(kAppRadius - 1),
+                child: video_player.createVideoPlayer(task.videoUrl!),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _VideoExerciseLibrary extends StatelessWidget {
+  const _VideoExerciseLibrary({required this.state});
+
+  final AppState state;
+
+  static const _templates = [
+    (
+      name: 'Barbell Bench Press Technique',
+      videoUrl: 'videos/Bench-Press-Chest.mp4',
+    ),
+    (
+      name: 'Chest Press Machine Form',
+      videoUrl: 'videos/Chest-Press3.mp4',
+    ),
+    (
+      name: 'Dumbbell Fly Execution',
+      videoUrl: 'videos/Dumbbell-Fly-Chest.mp4',
+    ),
+    (
+      name: 'Lever Seated Fly Technique',
+      videoUrl: 'videos/Lever-Seated-Fly-Chest.mp4',
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return AppPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const AppPanelHeader(title: 'Exercise Video Library'),
+          const SizedBox(height: 14),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final wide = constraints.maxWidth >= 600;
+              final cardWidth = wide ? (constraints.maxWidth - 16) / 2 : constraints.maxWidth;
+
+              final children = _templates.map((template) {
+                return Container(
+                  width: cardWidth,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.charcoal,
+                    borderRadius: BorderRadius.circular(kAppRadius),
+                    border: Border.all(color: AppColors.line),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        template.name,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        height: 140,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(kAppRadius),
+                          border: Border.all(color: AppColors.line),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(kAppRadius - 1),
+                          child: video_player.createVideoPlayer(template.videoUrl),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: () => _showCreateTaskDialog(
+                            context,
+                            state,
+                            initialTitle: template.name,
+                            initialVideoUrl: template.videoUrl,
+                          ),
+                          icon: const Icon(Icons.send_rounded, size: 16),
+                          label: const Text('Assign to Member'),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList();
+
+              if (wide) {
+                return Wrap(
+                  spacing: 16,
+                  children: children,
+                );
+              }
+              return Column(children: children);
+            },
           ),
         ],
       ),
@@ -215,11 +333,17 @@ class _ApprovalRow extends StatelessWidget {
 
 Future<void> _showCreateTaskDialog(
   BuildContext context,
-  AppState state,
-) async {
+  AppState state, {
+  String? initialTitle,
+  String? initialVideoUrl,
+}) async {
   final task = await showDialog<GymTask>(
     context: context,
-    builder: (_) => _CreateTaskDialog(state: state),
+    builder: (_) => _CreateTaskDialog(
+      state: state,
+      initialTitle: initialTitle,
+      initialVideoUrl: initialVideoUrl,
+    ),
   );
   if (task != null && context.mounted) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -229,9 +353,15 @@ Future<void> _showCreateTaskDialog(
 }
 
 class _CreateTaskDialog extends StatefulWidget {
-  const _CreateTaskDialog({required this.state});
+  const _CreateTaskDialog({
+    required this.state,
+    this.initialTitle,
+    this.initialVideoUrl,
+  });
 
   final AppState state;
+  final String? initialTitle;
+  final String? initialVideoUrl;
 
   @override
   State<_CreateTaskDialog> createState() => _CreateTaskDialogState();
@@ -245,6 +375,9 @@ class _CreateTaskDialogState extends State<_CreateTaskDialog> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialTitle != null) {
+      _titleController.text = widget.initialTitle!;
+    }
     if (widget.state.members.isNotEmpty) {
       _memberController.text = widget.state.members.first.name;
     }
@@ -264,7 +397,10 @@ class _CreateTaskDialogState extends State<_CreateTaskDialog> {
       memberName: _memberController.text,
       priority: 'Medium',
       dueDate: 'No due date',
-      instructions: '',
+      instructions: widget.initialVideoUrl != null
+          ? 'Watch the exercise demonstration video and maintain correct posture.'
+          : 'Complete the assigned training program.',
+      videoUrl: widget.initialVideoUrl,
     );
     Navigator.of(context).pop(task);
   }
@@ -312,15 +448,26 @@ class _CreateTaskDialogState extends State<_CreateTaskDialog> {
                       : null,
                 ),
                 const SizedBox(height: 14),
-                TextFormField(
-                  controller: _memberController,
+                DropdownButtonFormField<String>(
+                  value: _memberController.text.isEmpty ? null : _memberController.text,
                   decoration: const InputDecoration(
                     labelText: 'Assign to member',
                     prefixIcon: Icon(Icons.person_outline),
                   ),
+                  items: widget.state.members.map((m) {
+                    return DropdownMenuItem<String>(
+                      value: m.name,
+                      child: Text(m.name),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _memberController.text = value ?? '';
+                    });
+                  },
                   validator: (value) =>
-                      (value == null || value.trim().isEmpty)
-                      ? 'Enter a member name.'
+                      (value == null || value.isEmpty)
+                      ? 'Select a member.'
                       : null,
                 ),
               ],
